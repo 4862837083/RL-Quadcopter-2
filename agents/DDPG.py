@@ -127,7 +127,7 @@ class DDPG(object):
 
         if is_train:
             if self.curr_episode < self.max_explore_eps:  # exploration policy
-                epsilon = self.curr_episode / self.max_explore_eps
+                epsilon = self.curr_episode / self.max_explore_eps + 0.01
                 action =  action * epsilon + (1 - epsilon) * next(self.noise)
 
             action_scale = (np.clip(action, -1, 1) + 1)/2 * (self.action_high - self.action_low) + self.action_low
