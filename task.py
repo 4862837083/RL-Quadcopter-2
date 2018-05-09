@@ -82,7 +82,7 @@ class MyTask():
         sba = sum(np.fabs(self.sim.linear_accel))
         sbaa = sum(np.fabs(self.sim.angular_accels))
         # reward = max(-1, 1. - 0.02 * sum(np.fabs(diff)) - 0.02 * (sdv + dfav) + 0.01 * (sba + sbaa)) + (2 - 0.4 * self.sim.time)
-        reward = max(-1, 1 - .3 * sum(np.abs(diff)) - abs(np.mean(rotor_speeds) - 450)/ 900 )
+        reward = max(-1, 1 - .6 * sum(np.abs(diff)) - abs(np.mean(rotor_speeds) - 450)/ 900 )
         # if done and self.sim.time < self.sim.runtime:
         #     reward = -1
         return reward

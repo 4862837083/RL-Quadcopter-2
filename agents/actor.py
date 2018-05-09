@@ -23,7 +23,11 @@ class Actor(object):
         with tf.variable_scope(self.name):
             observation = tf.placeholder(tf.float32, shape=[None, self.n_observation])
             hid1 = default_dense(observation, 128)
+            hid1 = tf.layers.batch_normalization(hid1)
+            hid1 = tf.layers.dropout(hid1, 0.3)
             hid2 = default_dense(hid1, 128)
+            hid2 = tf.layers.batch_normalization(hid2)
+            hid2 = tf.layers.dropout(hid2, 0.3)
             hid3 = default_dense(hid2, 64)
             action = default_dense(hid3, self.n_action, activation=tf.nn.tanh, use_bias=False)
             trainable_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name)
@@ -32,8 +36,9 @@ class Actor(object):
     def build_train(self, learning_rate=0.0001):
         with tf.variable_scope(self.name) as scope:
             action_grads = tf.placeholder(tf.float32, [None, self.n_action])
-            var_grads = tf.gradients(self.action, self.trainable_vars, -action_grads)
-            train_op = tf.train.AdamOptimizer(learning_rate).apply_gradients(zip(var_grads, self.trainable_vars))
+            with tf.control_dependencies(tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+                var_grads = tf.gradients(self.action, self.trainable_vars, -action_grads)
+                train_op = tf.train.AdamOptimizer(learning_rate).apply_gradients(zip(var_grads, self.trainable_vars))
         self.action_grads, self.train_op = action_grads, train_op
 
     def predict_action(self, obs_batch):
