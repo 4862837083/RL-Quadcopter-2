@@ -78,11 +78,11 @@ class DDPG(object):
                  UONoise_para=None,
                  max_episode=500,
                  gamma=0.99,
-                 tau=0.01,
+                 tau=0.001,
                  memory_size=10000,
                  batch_size=64,
                  memory_warmup=128,
-                 max_explore_eps=200,
+                 max_explore_eps=500,
                  ):
         ## Task related
         self.task = task
@@ -127,7 +127,7 @@ class DDPG(object):
 
         if is_train:
             if self.curr_episode < self.max_explore_eps:  # exploration policy
-                epsilon = self.curr_episode / self.max_explore_eps + 0.01
+                epsilon = min(1, self.curr_episode / self.max_explore_eps + 0.01)
                 action =  action * epsilon + (1 - epsilon) * next(self.noise)
 
             action_scale = (np.clip(action, -1, 1) + 1)/2 * (self.action_high - self.action_low) + self.action_low
