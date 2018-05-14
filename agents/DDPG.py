@@ -30,14 +30,26 @@ class Memory(object):
         return [self.memory[i] for i in idx]
 
 
-def UONoise(dim, theta, mu, sigma):
-    theta = theta
-    mu = mu
-    sigma = sigma
-    state = np.zeros(dim)
-    while True:
-        state += theta * (mu - state) + sigma * np.random.randn(dim)
-        yield state
+class OUNoise:
+    """Ornstein-Uhlenbeck process."""
+
+    def __init__(self, size, mu, theta, sigma):
+        """Initialize parameters and noise process."""
+        self.mu = mu * np.ones(size)
+        self.theta = theta
+        self.sigma = sigma
+        self.reset()
+
+    def reset(self):
+        """Reset the internal state (= noise) to mean (mu)."""
+        self.state = copy.copy(self.mu)
+
+    def sample(self):
+        """Update internal state and return it as a noise sample."""
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.random.randn(len(x))
+        self.state = x + dx
+        return self.state
 
 # a = UONoise(4, 0.15, 5, 0.1)
 # for idx in range(20):
@@ -83,6 +95,7 @@ class DDPG(object):
                  batch_size=64,
                  memory_warmup=128,
                  max_explore_eps=500,
+                 base_noice_scale = 0.05
                  ):
         ## Task related
         self.task = task
@@ -102,6 +115,7 @@ class DDPG(object):
         self.memory_warmup = memory_warmup
         self.max_episode = max_episode
         self.max_explore_eps = max_explore_eps
+        self.base_noice_scale = base_noice_scale
 
         # Init Actor, Critic
         tf.reset_default_graph()
@@ -114,7 +128,7 @@ class DDPG(object):
         self.actorAsync.set_session(self.sess)
         self.criticAsync.set_session(self.sess)
         self.memory = Memory(memory_size)
-        self.noise = UONoise(self.action_size, **self.UONoise_para)
+        self.noise = OUNoise(self.action_size, **self.UONoise_para)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.sess.close()
@@ -127,8 +141,13 @@ class DDPG(object):
 
         if is_train:
             if self.curr_episode < self.max_explore_eps:  # exploration policy
-                epsilon = min(1, self.curr_episode / self.max_explore_eps + 0.01)
-                action =  action * epsilon + (1 - epsilon) * next(self.noise)
+                epsilon = self.curr_episode / self.max_explore_eps
+
+                if len(self.memory) > self.memory_warmup:
+                    #action = action * epsilon +  next(self.noise) #hold
+                    action = action  + self.base_noice_scale * self.noise.sample()
+                else:
+                    action = self.noise.sample()
 
             action_scale = (np.clip(action, -1, 1) + 1)/2 * (self.action_high - self.action_low) + self.action_low
             next_state, reward, done = self.task.step(action_scale)
@@ -165,7 +184,7 @@ class DDPG(object):
         self.criticAsync.async_update(self.tau)
 
     def reset_episode(self):
-        self.noise = UONoise(self.action_size, **self.UONoise_para)
+        self.noise.reset()
         state = self.task.reset()
         self.last_state = state
         return state
@@ -184,9 +203,9 @@ class DDPG(object):
             episode_steps += 1
             iteration += 1
             if done:
-                print('\r iter {}, ep {} ,{} score {:8f}, best {:8f} time {}'.format(
+                print('\r iter {}, ep {} ,score {:8f}, best {:8f} time {}'.format(
                     iteration, self.curr_episode,
-                    lst_act, episode_score, max_score, self.task.gettime()),
+                    episode_score, max_score, self.task.gettime()),
                 end='')
 
                 state = self.reset_episode()
