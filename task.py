@@ -140,8 +140,8 @@ class MyTask4():
         self.action_repeat = 3
 
         self.state_size = self.action_repeat * 9
-        self.action_low = 420
-        self.action_high = 480
+        self.action_low = 400
+        self.action_high = 500
         self.action_size = 4
 
         # Goal
@@ -199,72 +199,6 @@ class MyTask4():
         inipose = copy.copy(self.sim.pose)
         inipose[:3] = inipose[:3] - self.target_pos
         inipose = np.hstack((inipose, self.sim.angular_v))
-        state = np.concatenate([np.tanh(inipose)] * self.action_repeat)
-        return state
-
-
-class MyTask5():
-    """Task (environment) that defines the goal and provides feedback to the agent."""
-
-    def __init__(self, init_pose=None, init_velocities=None,
-                 init_angle_velocities=None, runtime=5., target_pos=None):
-        """Initialize a Task object.
-        Params
-        ======
-            init_pose: initial position of the quadcopter in (x,y,z) dimensions and the Euler angles
-            init_velocities: initial velocity of the quadcopter in (x,y,z) dimensions
-            init_angle_velocities: initial radians/second for each of the three Euler angles
-            runtime: time limit for each episode
-            target_pos: target/  (x,y,z) position for the agent
-        """
-        # Simulation
-        self.sim = PhysicsSim(init_pose, init_velocities, init_angle_velocities, runtime)
-        self.action_repeat = 3
-
-        self.state_size = self.action_repeat * 6
-        self.action_low = -1
-        self.action_high = 1
-        self.action_size = 5
-
-        # Goal
-        self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 10.])
-
-    def get_reward(self, done, rotor_speeds):
-        """Uses current pose of sim to return reward."""
-        diff = self.sim.pose[:3] - self.target_pos
-        sdv = sum(np.fabs(self.sim.angular_v))
-        dfav = sum(np.fabs(self.sim.v))
-        sba = sum(np.fabs(self.sim.linear_accel))
-        sbaa = sum(np.fabs(self.sim.angular_accels))
-        # reward = max(-1, 1. - 0.02 * sum(np.fabs(diff)) - 0.02 * (sdv + dfav) + 0.01 * (sba + sbaa)) + (2 - 0.4 * self.sim.time)
-        reward = max(-2, 2 - .8 * np.abs(diff[2]) - .4 * sum(diff[:2] ** 2))
-        if done and self.sim.time < self.sim.runtime:
-            reward = -100
-        return reward
-
-    def step(self, action):
-        """Uses action to obtain next state, reward, done."""
-        reward = 0
-        pose_all = []
-        base = (action[0] + 1) / 2 * 900
-        rotor_speeds = base + action[1:] * 5
-        for _ in range(self.action_repeat):
-            done = self.sim.next_timestep(rotor_speeds)  # update the sim pose and velocities
-            reward += self.get_reward(done, rotor_speeds)
-            inipose = copy.copy(self.sim.pose)
-            inipose[:3] = inipose[:3] - self.target_pos
-            pose_all.append(np.tanh(inipose))
-        next_state = np.concatenate(pose_all)
-        return next_state, reward, done
-
-    def gettime(self):
-        return self.sim.time
-
-    def reset(self):
-        """Reset the sim to start a new episode."""
-        self.sim.reset()
-        inipose = copy.copy(self.sim.pose)
-        inipose[:3] = inipose[:3] - self.target_pos
         state = np.concatenate([np.tanh(inipose)] * self.action_repeat)
         return state
 

@@ -11,7 +11,7 @@ class Critic(object):
         self.build_train()
 
     def build_model(self):
-        activation = tf.nn.elu
+        activation = tf.nn.relu
         kernel_initializer = tf.truncated_normal_initializer(stddev=0.0001)
         kernel_regularizer = tf.contrib.layers.l2_regularizer(0.0)
         default_dense = partial(tf.layers.dense, \

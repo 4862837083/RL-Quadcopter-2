@@ -189,7 +189,7 @@ class DDPG(object):
         self.last_state = state
         return state
 
-    def train(self):
+    def train(self, input_lst=None):
         self.curr_episode = 0
         iteration = 0
         episode_score = 0
@@ -207,7 +207,8 @@ class DDPG(object):
                     iteration, self.curr_episode,
                     episode_score, max_score, self.task.gettime()),
                 end='')
-
+                if input_lst is not None:
+                    input_lst.append(episode_score)
                 state = self.reset_episode()
                 self.curr_episode += 1
                 if episode_score > max_score:
